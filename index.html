@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Auth MVP Client</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Lucide Icons for clean look -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+    body {
+      font-family: 'Inter', sans-serif;
+    }
+    .console-font {
+      font-family: 'JetBrains Mono', monospace;
+    }
+  </style>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col justify-between">
+
+  <!-- Header -->
+  <header class="border-b border-slate-800 bg-slate-900/80 backdrop-blur sticky top-0 z-50">
+    <div class="max-w-7xl mx-auto px-4 py-4 flex flex-col sm:flex-row justify-between items-center gap-4">
+      <div class="flex items-center gap-3">
+        <div class="bg-indigo-600 p-2 rounded-lg text-white">
+          <i data-lucide="shield-check" class="w-6 h-6"></i>
+        </div>
+        <div>
+          <h1 class="text-xl font-bold tracking-tight text-white">Auth MVP Suite</h1>
+          <p class="text-xs text-slate-400">Netlify + Render + Supabase</p>
+        </div>
+      </div>
+      
+      <!-- API Endpoint Input Configuration (Perfect for testing local vs deployed) -->
+      <div class="flex items-center gap-2 w-full sm:w-auto">
+        <label for="apiUrlInput" class="text-xs font-semibold text-slate-400 whitespace-nowrap">API URL:</label>
+        <div class="relative w-full sm:w-80">
+          <input 
+            type="url" 
+            id="apiUrlInput" 
+            placeholder="http://localhost:5000" 
+            class="w-full bg-slate-800 text-xs border border-slate-700 rounded px-3 py-1.5 text-indigo-300 focus:outline-none focus:border-indigo-500 font-mono transition-all"
+            value="http://localhost:5000"
+          >
+          <div class="absolute inset-y-0 right-2 flex items-center">
+            <span class="flex h-2 w-2 relative">
+              <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+              <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content Body -->
+  <main class="max-w-6xl mx-auto px-4 py-8 flex-grow grid grid-cols-1 lg:grid-cols-12 gap-8 w-full">
+    
+    <!-- Auth Area (Left 7 Columns on Large Screens) -->
+    <section class="lg:col-span-7 flex flex-col justify-start">
+      
+      <!-- Notifications Wrapper -->
+      <div id="alertBox" class="hidden mb-4 p-4 rounded-lg flex items-start gap-3 border text-sm transition-all duration-300">
+        <div id="alertIcon"></div>
+        <div class="flex-1">
+          <p id="alertTitle" class="font-semibold"></p>
+          <p id="alertMessage" class="text-xs mt-1 text-slate-300"></p>
+        </div>
+        <button onclick="closeAlert()" class="text-slate-400 hover:text-white transition-colors">
+          <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
+      </div>
+
+      <!-- Welcome Card (Dynamic logged in status) -->
+      <div id="welcomeCard" class="hidden bg-slate-800/50 border border-indigo-500/30 rounded-2xl p-6 md:p-8 backdrop-blur shadow-xl">
+        <div class="flex items-center gap-4 mb-6">
+          <div class="bg-emerald-500/10 text-emerald-400 p-3 rounded-full">
+            <i data-lucide="user-check" class="w-10 h-10 animate-bounce"></i>
+          </div>
+          <div>
+            <h2 class="text-2xl font-bold text-white">Access Authenticated!</h2>
+            <p class="text-sm text-slate-400">Your secure token verification details are visible below.</p>
+          </div>
+        </div>
+
+        <div class="space-y-4">
+          <div class="bg-slate-900/80 p-4 rounded-xl border border-slate-700">
+            <p class="text-xs text-slate-400 mb-1">Authenticated Account Identifier:</p>
+            <p id="profileEmail" class="font-medium text-indigo-300 select-all"></p>
+          </div>
+
+          <div class="bg-slate-900/80 p-4 rounded-xl border border-slate-700">
+            <p class="text-xs text-slate-400 mb-1">User Database UUID:</p>
+            <p id="profileId" class="font-mono text-xs text-slate-300 select-all"></p>
+          </div>
+
+          <div class="bg-slate-900/80 p-4 rounded-xl border border-slate-700">
+            <p class="text-xs text-slate-400 mb-1">Active Session Auth Token (JWT Header Format):</p>
+            <textarea id="profileToken" readonly rows="3" class="w-full text-xs font-mono bg-transparent text-slate-400 border-none resize-none focus:ring-0 focus:outline-none select-all" style="scrollbar-width: thin;"></textarea>
+          </div>
+
+          <div class="flex gap-4 pt-2">
+            <button id="verifyProfileBtn" class="flex-1 bg-slate-700 hover:bg-slate-600 active:scale-[0.98] transition-all text-white py-3 px-4 rounded-lg font-semibold flex items-center justify-center gap-2">
+              <i data-lucide="refresh-cw" class="w-4 h-4" id="verifySpinner"></i>
+              Recheck Profile Token
+            </button>
+            <button id="logoutBtn" class="flex-1 bg-rose-600/20 text-rose-300 border border-rose-500/30 hover:bg-rose-600 hover:text-white active:scale-[0.98] transition-all py-3 px-4 rounded-lg font-semibold flex items-center justify-center gap-2">
+              <i data-lucide="log-out" class="w-4 h-4"></i>
+              Sign Out Securely
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Auth Forms Container (Hidden when logged in) -->
+      <div id="authForms" class="bg-slate-800/40 border border-slate-700/60 rounded-2xl p-6 md:p-8 backdrop-blur shadow-xl">
+        
+        <!-- Tab Selectors -->
+        <div class="flex border-b border-slate-700 mb-6">
+          <button id="tabLogin" class="flex-1 pb-3 text-center font-semibold border-b-2 border-indigo-500 text-indigo-400 transition-colors">
+            Sign In
+          </button>
+          <button id="tabSignup" class="flex-1 pb-3 text-center font-semibold border-b-2 border-transparent text-slate-400 hover:text-slate-200 transition-colors">
+            Register Account
+          </button>
+        </div>
+
+        <!-- LOGIN FORM -->
+        <form id="loginForm" class="space-y-4">
+          <div>
+            <label class="block text-xs font-medium text-slate-400 uppercase tracking-wider mb-1.5">Email Address</label>
+            <div class="relative">
+              <span class="absolute inset-y-0 left-3 flex items-center text-slate-400">
+                <i data-lucide="mail" class="w-4 h-4"></i>
+              </span>
+              <input 
+                type="email" 
+                name="email" 
+                required 
+                placeholder="test@example.com" 
+                class="w-full bg-slate-900/60 border border-slate-700 rounded-lg pl-10 pr-4 py-3 text-slate-100 focus:outline-none focus:border-indigo-500 placeholder-slate-500 transition-all text-sm"
+              >
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-xs font-medium text-slate-400 uppercase tracking-wider mb-1.5">Password</label>
+            <div class="relative">
+              <span class="absolute inset-y-0 left-3 flex items-center text-slate-400">
+                <i data-lucide="lock" class="w-4 h-4"></i>
+              </span>
+              <input 
+                type="password" 
+                name="password" 
+                required 
+                placeholder="••••••••" 
+                class="w-full bg-slate-900/60 border border-slate-700 rounded-lg pl-10 pr-4 py-3 text-slate-100 focus:outline-none focus:border-indigo-500 placeholder-slate-500 transition-all text-sm"
+              >
+            </div>
+          </div>
+
+          <button 
+            type="submit" 
+            class="w-full bg-indigo-600 hover:bg-indigo-500 active:scale-[0.99] transition-all text-white font-semibold py-3 px-4 rounded-lg flex items-center justify-center gap-2 mt-6 shadow-lg shadow-indigo-600/20"
+          >
+            <span id="loginBtnText">Sign In Account</span>
+            <div id="loginSpinner" class="hidden animate-spin rounded-full h-4.5 w-4.5 border-2 border-white border-t-transparent"></div>
+          </button>
+        </form>
+
+        <!-- SIGNUP FORM (Initially Hidden) -->
+        <form id="signupForm" class="space-y-4 hidden">
+          <div class="bg-indigo-900/20 border border-indigo-700/30 p-3 rounded-lg text-xs text-indigo-300 flex items-start gap-2.5">
+            <i data-lucide="info" class="w-4.5 h-4.5 flex-shrink-0 text-indigo-400"></i>
+            <span>After registration, your backend registers you inside Supabase's fully-managed user authentication pool.</span>
+          </div>
+
+          <div>
+            <label class="block text-xs font-medium text-slate-400 uppercase tracking-wider mb-1.5">Email Address</label>
+            <div class="relative">
+              <span class="absolute inset-y-0 left-3 flex items-center text-slate-400">
+                <i data-lucide="mail" class="w-4 h-4"></i>
+              </span>
+              <input 
+                type="email" 
+                name="email" 
+                required 
+                placeholder="developer@example.com" 
+                class="w-full bg-slate-900/60 border border-slate-700 rounded-lg pl-10 pr-4 py-3 text-slate-100 focus:outline-none focus:border-indigo-500 placeholder-slate-500 transition-all text-sm"
+              >
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-xs font-medium text-slate-400 uppercase tracking-wider mb-1.5">Password</label>
+            <div class="relative">
+              <span class="absolute inset-y-0 left-3 flex items-center text-slate-400">
+                <i data-lucide="lock" class="w-4 h-4"></i>
+              </span>
+              <input 
+                type="password" 
+                name="password" 
+                required 
+                minlength="6"
+                placeholder="Minimum 6 characters" 
+                class="w-full bg-slate-900/60 border border-slate-700 rounded-lg pl-10 pr-4 py-3 text-slate-100 focus:outline-none focus:border-indigo-500 placeholder-slate-500 transition-all text-sm"
+              >
+            </div>
+          </div>
+
+          <button 
+            type="submit" 
+            class="w-full bg-indigo-600 hover:bg-indigo-500 active:scale-[0.99] transition-all text-white font-semibold py-3 px-4 rounded-lg flex items-center justify-center gap-2 mt-6 shadow-lg shadow-indigo-600/20"
+          >
+            <span id="signupBtnText">Create Secure Account</span>
+            <div id="signupSpinner" class="hidden animate-spin rounded-full h-4.5 w-4.5 border-2 border-white border-t-transparent"></div>
+          </button>
+        </form>
+
+      </div>
+    </section>
+
+    <!-- Logging Console / Diagnostic Section (Right 5 Columns) -->
+    <section class="lg:col-span-5 flex flex-col h-full min-h-[400px]">
+      <div class="bg-slate-950 border border-slate-800 rounded-2xl flex flex-col flex-grow overflow-hidden shadow-2xl">
+        
+        <!-- Console Header -->
+        <div class="bg-slate-900 px-4 py-3 border-b border-slate-800 flex justify-between items-center flex-shrink-0">
+          <div class="flex items-center gap-2">
+            <span class="flex h-2.5 w-2.5 rounded-full bg-indigo-500"></span>
+            <span class="text-xs font-bold text-slate-300 uppercase tracking-wide">Live Diagnostics Terminal</span>
+          </div>
+          <button id="clearLogBtn" class="text-xs text-slate-500 hover:text-slate-300 transition-colors flex items-center gap-1 bg-slate-850 px-2 py-1 rounded">
+            <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+            Clear
+          </button>
+        </div>
+
+        <!-- Console Log Lines -->
+        <div id="consoleLogs" class="flex-grow p-4 text-xs console-font text-slate-300 overflow-y-auto space-y-2 select-text max-h-[450px]" style="scrollbar-width: thin;">
+          <div class="text-slate-500">// Welcome to the Auth MVP Diagnostics Console.</div>
+          <div class="text-slate-500">// Actions performed in forms trigger live logs with request headers/errors.</div>
+          <div class="text-indigo-400 font-medium">Ready for execution. Awaiting login/registration...</div>
+        </div>
+
+        <!-- Environment Health Checks -->
+        <div class="bg-slate-900/60 px-4 py-3 border-t border-slate-800 text-xs flex justify-between items-center text-slate-400">
+          <span>Backend CORS Health Status:</span>
+          <button id="checkHealthBtn" class="text-xs font-medium text-indigo-400 hover:text-indigo-300 transition-colors flex items-center gap-1.5 bg-slate-800 px-2.5 py-1 rounded-md">
+            <i data-lucide="activity" class="w-3.5 h-3.5"></i>
+            Verify API Ping
+          </button>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Footer -->
+  <footer class="border-t border-slate-800 bg-slate-950 py-4 mt-auto">
+    <div class="max-w-7xl mx-auto px-4 text-center text-xs text-slate-500 flex flex-col sm:flex-row justify-between items-center gap-2">
+      <p>&copy; 2026 Auth Setup MVP Project. Production-ready for Netlify + Render + Supabase.</p>
+      <div class="flex gap-4">
+        <span class="flex items-center gap-1"><span class="h-1.5 w-1.5 rounded-full bg-emerald-500"></span> CORS Configured</span>
+        <span class="flex items-center gap-1"><span class="h-1.5 w-1.5 rounded-full bg-emerald-500"></span> CSRF Hardened</span>
+      </div>
+    </div>
+  </footer>
+
+  <!-- App Core Logics -->
+  <script>
+    // Initialize Lucide Icons
+    lucide.createIcons();
+
+    // Elements
+    const apiUrlInput = document.getElementById('apiUrlInput');
+    const tabLogin = document.getElementById('tabLogin');
+    const tabSignup = document.getElementById('tabSignup');
+    const loginForm = document.getElementById('loginForm');
+    const signupForm = document.getElementById('signupForm');
+    const welcomeCard = document.getElementById('welcomeCard');
+    const authForms = document.getElementById('authForms');
+    const consoleLogs = document.getElementById('consoleLogs');
+    const clearLogBtn = document.getElementById('clearLogBtn');
+    const checkHealthBtn = document.getElementById('checkHealthBtn');
+    const alertBox = document.getElementById('alertBox');
+    const alertIcon = document.getElementById('alertIcon');
+    const alertTitle = document.getElementById('alertTitle');
+    const alertMessage = document.getElementById('alertMessage');
+    
+    // Spinners & button states
+    const loginSpinner = document.getElementById('loginSpinner');
+    const loginBtnText = document.getElementById('loginBtnText');
+    const signupSpinner = document.getElementById('signupSpinner');
+    const signupBtnText = document.getElementById('signupBtnText');
+    const verifySpinner = document.getElementById('verifySpinner');
+    const logoutBtn = document.getElementById('logoutBtn');
+    const verifyProfileBtn = document.getElementById('verifyProfileBtn');
+
+    // Profile placeholders
+    const profileEmail = document.getElementById('profileEmail');
+    const profileId = document.getElementById('profileId');
+    const profileToken = document.getElementById('profileToken');
+
+    // Save and retrieve user config from LocalStorage
+    const SAVED_API_URL_KEY = 'auth_mvp_backend_url';
+    const SAVED_JWT_TOKEN_KEY = 'auth_mvp_token';
+
+    // Set initial configured URL
+    if (localStorage.getItem(SAVED_API_URL_KEY)) {
+      apiUrlInput.value = localStorage.getItem(SAVED_API_URL_KEY);
+    }
+    
+    apiUrlInput.addEventListener('change', (e) => {
+      localStorage.setItem(SAVED_API_URL_KEY, e.target.value.trim());
+      logToTerminal('Config', `Backend URL changed to: ${e.target.value.trim()}`, 'indigo');
+    });
+
+    // Logger Utility
+    function logToTerminal(topic, message, color = 'slate') {
+      const timestamp = new Date().toISOString().split('T')[1].slice(0, 8);
+      const logLine = document.createElement('div');
+      
+      let textClass = 'text-slate-300';
+      if (color === 'red') textClass = 'text-rose-400 font-medium';
+      if (color === 'emerald') textClass = 'text-emerald-400 font-medium';
+      if (color === 'indigo') textClass = 'text-indigo-400';
+      if (color === 'yellow') textClass = 'text-amber-400';
+
+      logLine.innerHTML = `
+        <span class="text-slate-500">[${timestamp}]</span> 
+        <span class="text-slate-400 font-semibold uppercase tracking-wider text-[10px] bg-slate-800 px-1 rounded">[${topic}]</span> 
+        <span class="${textClass}">${escapeHtml(message)}</span>
+      `;
+      consoleLogs.appendChild(logLine);
+      consoleLogs.scrollTop = consoleLogs.scrollHeight;
+    }
+
+    function escapeHtml(str) {
+      return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    }
+
+    clearLogBtn.addEventListener('click', () => {
+      consoleLogs.innerHTML = `<div class="text-slate-500">// Log terminal cleared. Waiting for actions...</div>`;
+    });
+
+    // Tab switcher
+    tabLogin.addEventListener('click', () => {
+      tabLogin.className = "flex-1 pb-3 text-center font-semibold border-b-2 border-indigo-500 text-indigo-400 transition-colors";
+      tabSignup.className = "flex-1 pb-3 text-center font-semibold border-b-2 border-transparent text-slate-400 hover:text-slate-200 transition-colors";
+      loginForm.classList.remove('hidden');
+      signupForm.classList.add('hidden');
+    });
+
+    tabSignup.addEventListener('click', () => {
+      tabSignup.className = "flex-1 pb-3 text-center font-semibold border-b-2 border-indigo-500 text-indigo-400 transition-colors";
+      tabLogin.className = "flex-1 pb-3 text-center font-semibold border-b-2 border-transparent text-slate-400 hover:text-slate-200 transition-colors";
+      signupForm.classList.remove('hidden');
+      loginForm.classList.add('hidden');
+    });
+
+    // Custom alerts instead of breaking iframe constraints with standard window.alert()
+    function showAlert(type, title, message) {
+      alertBox.classList.remove('hidden', 'bg-emerald-950', 'border-emerald-700', 'text-emerald-300', 'bg-rose-950', 'border-rose-700', 'text-rose-300');
+      
+      if (type === 'success') {
+        alertBox.classList.add('bg-emerald-950/90', 'border-emerald-700/50', 'text-emerald-100');
+        alertIcon.innerHTML = `<i data-lucide="check-circle-2" class="w-5 h-5 text-emerald-400"></i>`;
+      } else {
+        alertBox.classList.add('bg-rose-950/90', 'border-rose-700/50', 'text-rose-100');
+        alertIcon.innerHTML = `<i data-lucide="alert-triangle" class="w-5 h-5 text-rose-400"></i>`;
+      }
+      
+      alertTitle.textContent = title;
+      alertMessage.textContent = message;
+      lucide.createIcons();
+      alertBox.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+
+    function closeAlert() {
+      alertBox.classList.add('hidden');
+    }
+
+    // Ping Verification
+    checkHealthBtn.addEventListener('click', async () => {
+      const rootUrl = apiUrlInput.value.trim();
+      logToTerminal('CORS-Test', `Initiating GET test options ping request to ${rootUrl}/health`, 'indigo');
+      
+      try {
+        const response = await fetch(`${rootUrl}/health`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        });
+        
+        if (response.ok) {
+          const body = await response.json();
+          logToTerminal('CORS-Test', `SUCCESS: Server responded properly. Status Code: ${response.status}. Message: ${body.message || 'Running'}`, 'emerald');
+          showAlert('success', 'Backend Server Connected!', 'Express backend CORS rules validated successfully. Ready for operations.');
+        } else {
+          logToTerminal('CORS-Test', `FAILURE: Server hit but returned status: ${response.status}`, 'yellow');
+          showAlert('error', 'Backend Status Error', `Connected but responded with bad status: ${response.status}`);
+        }
+      } catch (err) {
+        logToTerminal('CORS-Test', `ERROR: Failed connection or blocked by CORS: ${err.message}`, 'red');
+        showAlert('error', 'CORS / Connection Fail', `Cannot connect to backend. Please ensure the backend server is running and ALLOWED_ORIGINS incorporates this domain.`);
+      }
+    });
+
+    // Form signup action
+    signupForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const signupUrl = `${apiUrlInput.value.trim()}/api/signup`;
+      const formData = new FormData(signupForm);
+      const email = formData.get('email');
+      const password = formData.get('password');
+
+      // UI state update
+      signupSpinner.classList.remove('hidden');
+      signupBtnText.textContent = "Processing Registration...";
+      logToTerminal('Register', `Sending POST secure payload to backend to register user ${email}`, 'indigo');
+
+      try {
+        const res = await fetch(signupUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password })
+        });
+
+        const data = await res.json();
+        
+        if (res.ok && data.success) {
+          logToTerminal('Register', `SUCCESS: User verified and generated in database. Verification email queued if required. ID: ${data.data?.user?.id || 'Ready'}`, 'emerald');
+          showAlert('success', 'Account Registered!', 'Check your inbox for a confirmation link (if enabled in Supabase dashboard) or proceed to sign in!');
+          signupForm.reset();
+          tabLogin.click();
+        } else {
+          logToTerminal('Register', `SERVER ERROR [${res.status}]: ${data.error || 'Registration failed'}`, 'red');
+          showAlert('error', 'Registration Unsuccessful', data.error || 'Server error encountered during authentication execution.');
+        }
+      } catch (err) {
+        logToTerminal('Register', `FETCH ERROR: Blocked by CORS config or server is offline. Check details: ${err.message}`, 'red');
+        showAlert('error', 'CORS Connection Blocked', 'Network execution failed. Check browser inspection logs or the Diagnostics box on the right.');
+      } finally {
+        signupSpinner.classList.add('hidden');
+        signupBtnText.textContent = "Create Secure Account";
+      }
+    });
+
+    // Form login action
+    loginForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const loginUrl = `${apiUrlInput.value.trim()}/api/login`;
+      const formData = new FormData(loginForm);
+      const email = formData.get('email');
+      const password = formData.get('password');
+
+      loginSpinner.classList.remove('hidden');
+      loginBtnText.textContent = "Authenticating Creds...";
+      logToTerminal('Login', `Executing sign-in handshake for user ${email}`, 'indigo');
+
+      try {
+        const res = await fetch(loginUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password })
+        });
+
+        const data = await res.json();
+
+        if (res.ok && data.success) {
+          logToTerminal('Login', `SUCCESS: Credential validation complete. Token received successfully.`, 'emerald');
+          
+          // Store token in local memory
+          const token = data.session?.access_token;
+          if (token) {
+            localStorage.setItem(SAVED_JWT_TOKEN_KEY, token);
+            logToTerminal('JWT', `Token successfully saved locally.`, 'slate');
+            showDashboard(data.user, token);
+          } else {
+            logToTerminal('Login', `WARN: Login succeeded but no Access Token returned. Complete your Supabase confirmation.`, 'yellow');
+            showAlert('success', 'Log-In Success without Token', 'Login registered, verify email if prompted.');
+          }
+        } else {
+          logToTerminal('Login', `SERVER ERROR [${res.status}]: ${data.error || 'Authentication denied'}`, 'red');
+          showAlert('error', 'Authentication Denied', data.error || 'Incorrect details or system registration block.');
+        }
+      } catch (err) {
+        logToTerminal('Login', `FETCH ERROR: Check CORS rules. Details: ${err.message}`, 'red');
+        showAlert('error', 'CORS Communication Timeout', 'No responsive CORS payload retrieved from target API server.');
+      } finally {
+        loginSpinner.classList.add('hidden');
+        loginBtnText.textContent = "Sign In Account";
+      }
+    });
+
+    // Verification of active session (Dashboard Check)
+    async function verifyTokenSession(token) {
+      if (!token) return;
+      const verifyUrl = `${apiUrlInput.value.trim()}/api/profile`;
+      logToTerminal('Verification', `Validating Bearer Auth Token headers against backend service.`, 'indigo');
+      
+      verifySpinner.classList.add('animate-spin');
+
+      try {
+        const res = await fetch(verifyUrl, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          }
+        });
+
+        const data = await res.json();
+
+        if (res.ok && data.success) {
+          logToTerminal('Verification', `VERIFIED: Server approved credentials. Welcome back ${data.user?.email}`, 'emerald');
+          showDashboard(data.user, token);
+        } else {
+          logToTerminal('Verification', `EXPIRED: Server rejected local security token. Error: ${data.error}`, 'yellow');
+          clearSession();
+          showAlert('error', 'Session Expired', 'Your local token context is invalid. Please login again.');
+        }
+      } catch (err) {
+        logToTerminal('Verification', `ERROR: Verification handshake dropped. ${err.message}`, 'red');
+      } finally {
+        verifySpinner.classList.remove('animate-spin');
+      }
+    }
+
+    // View adjustments
+    function showDashboard(user, token) {
+      authForms.classList.add('hidden');
+      welcomeCard.classList.remove('hidden');
+      profileEmail.textContent = user.email;
+      profileId.textContent = user.id;
+      profileToken.value = `Bearer ${token}`;
+    }
+
+    function clearSession() {
+      localStorage.removeItem(SAVED_JWT_TOKEN_KEY);
+      welcomeCard.classList.add('hidden');
+      authForms.classList.remove('hidden');
+      loginForm.reset();
+      signupForm.reset();
+      logToTerminal('Session', `Auth Context reset successfully.`, 'indigo');
+    }
+
+    // Event listeners for session
+    logoutBtn.addEventListener('click', () => {
+      clearSession();
+      showAlert('success', 'Logged Out', 'Your auth context was completely purged from local storage memory safely.');
+    });
+
+    verifyProfileBtn.addEventListener('click', () => {
+      const token = localStorage.getItem(SAVED_JWT_TOKEN_KEY);
+      if (token) {
+        verifyTokenSession(token);
+      } else {
+        logToTerminal('Dashboard', `No token found to authenticate.`, 'red');
+      }
+    });
+
+    // Auto load session on browser boot
+    window.addEventListener('DOMContentLoaded', () => {
+      const activeToken = localStorage.getItem(SAVED_JWT_TOKEN_KEY);
+      if (activeToken) {
+        logToTerminal('Session', `Pre-existing user JWT token context discovered in local memory. Auto verifying...`, 'indigo');
+        verifyTokenSession(activeToken);
+      } else {
+        logToTerminal('Session', `Cold-Boot completed. Setup target api settings on top or check local logs.`, 'slate');
+      }
+    });
+
+  </script>
+</body>
+</html>
